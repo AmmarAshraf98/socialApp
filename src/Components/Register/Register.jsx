@@ -1,12 +1,32 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
 import * as Zod from "zod";
 
 function Register() {
+  // validation Schema
+  const schema = Zod.object({
+    name: Zod.string().min(3, "too short"),
+    email: Zod.string().email("invalid email"),
+    password: Zod.string().regex(/^[A-Z][a-z1-9]{8}$/, "invalid password"),
+    rePassword: Zod.string(),
+    dateOfBirth: Zod.coerce.date("invalid date").refine((val) => {
+      const currentYear = new Date().getFullYear();
+      const selectionDate = val.getFullYear();
+      if (currentYear - selectionDate < 18) return false;
+      return true;
+    }, "too small"),
+    gender: Zod.enum(["male", "female"]),
+  }).refine((object) => object.password === object.rePassword, {
+    message: "didn't match",
+    path: ["rePassword"],
+  });
+
   const {
     register,
     handleSubmit,
-    watch,
+    trigger,
+    // watch,
     formState: { errors, touchedFields },
   } = useForm({
     mode: "onBlur",
@@ -18,7 +38,10 @@ function Register() {
       dateOfBirth: "",
       gender: "",
     },
+    resolver: zodResolver(schema),
   });
+
+  console.log(errors);
 
   const onSubmit = (data) => console.log(data);
 
@@ -41,19 +64,7 @@ function Register() {
             className='w-full rounded-md outline-none border border-blue-400 focus:ring-blue-950 dark:focus:ring-blue-200 focus:ring py-1 px-2'
             name='name'
             placeholder='enter your name'
-            {...register("name", {
-              required: "name is required",
-
-              minLength: {
-                value: 3,
-                message: "minimum length is 3 character",
-              },
-
-              maxLength: {
-                value: 15,
-                message: "max length is 15 character",
-              },
-            })}
+            {...register("name")}
           />
 
           {errors.name && touchedFields.name && (
@@ -72,13 +83,7 @@ function Register() {
             className='w-full rounded-md outline-none border border-blue-400 focus:ring-blue-950 dark:focus:ring-blue-200 focus:ring py-1 px-2'
             name='email'
             placeholder='enter your email'
-            {...register("email", {
-              required: "email is required",
-              pattern: {
-                value: /^[\w-/.]+@([\w-]+\.)+[\w-]{2,4}$/,
-                message: "invalid email",
-              },
-            })}
+            {...register("email")}
           />
           {errors.email && touchedFields.email && (
             <p className='mt-1 text-red-500 capitalize text-sm px-2 text-center'>
@@ -96,14 +101,13 @@ function Register() {
             className='w-full rounded-md outline-none border border-blue-400 focus:ring-blue-950 dark:focus:ring-blue-200 focus:ring py-1 px-2'
             name='password'
             placeholder='enter your password'
-            {...register("password", {
-              required: "passowrd is reuired",
-
-              pattern: {
-                value: /^[A-Z][a-z1-9]{8}$/,
-                message: "invalid password",
-              },
-            })}
+            {...register("password")}
+            onBlur={(e) => {
+              // Keep normal RHF blur behavior
+              register("rePassword").onBlur(e);
+              // Also revalidate the password match when rePassword is blurred
+              trigger(["password", "rePassword"]);
+            }}
           />
           {errors.password && touchedFields.password && (
             <p className='mt-1 text-red-500 capitalize text-sm px-2 text-center'>
@@ -121,14 +125,7 @@ function Register() {
             className='w-full rounded-md outline-none border border-blue-400 focus:ring-blue-950 dark:focus:ring-blue-200 focus:ring py-1 px-2'
             name='rePassword'
             placeholder='confirmation your password'
-            {...register("rePassword", {
-              required: "confirmation password is required",
-              validate: (val) => {
-                console.log(val);
-                if (val === watch("password")) return true;
-                else return "password and repassword dosen't matched";
-              },
-            })}
+            {...register("rePassword")}
           />
           {errors.rePassword && touchedFields.rePassword && (
             <p className='mt-1 text-red-500 capitalize text-sm px-2 text-center'>
@@ -145,15 +142,7 @@ function Register() {
             id='dateOfBirth'
             name='dateOfBirth'
             className='w-full py-1 px-2 border border-blue-300 outline-none focus:ring focus:ring-blue-800 rounded-md'
-            {...register("dateOfBirth", {
-              required: "date is required",
-              validate: (val) => {
-                console.log(val);
-                const objDate = new Date(val).getFullYear();
-                if (2025 - objDate > 16) return true;
-                else return "very short";
-              },
-            })}
+            {...register("dateOfBirth")}
           />
           {errors.dateOfBirth && touchedFields.dateOfBirth && (
             <p className='mt-1 text-red-500 capitalize text-sm px-2 text-center'>
@@ -171,13 +160,7 @@ function Register() {
             name='gender'
             value={"male"}
             className='appearance-none w-3 h-3 border-2 mx-4 border-blue-300 rounded-full checked:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600'
-            {...register("gender", {
-              required: "gnder is required",
-              pattern: {
-                value: /^(male|female)$/,
-                message: "invalid gender",
-              },
-            })}
+            {...register("gender")}
           />
           <label htmlFor='female'>Female</label>
           <input
@@ -186,13 +169,7 @@ function Register() {
             name='gender'
             value={"female"}
             className='appearance-none w-3 h-3 border-2 mx-4 border-blue-300 rounded-full checked:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600'
-            {...register("gender", {
-              required: "gnder is required",
-              pattern: {
-                value: /^(male|female)$/,
-                message: "invalid gender",
-              },
-            })}
+            {...register("gender")}
           />
           {errors.gender && touchedFields.gender && (
             <p className='mt-1 text-red-500 capitalize text-sm px-2 text-center'>
